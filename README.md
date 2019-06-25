@@ -1,2 +1,2 @@
-# GingerCats_Paws
+# GingerCat's Paws
 Ginger Cat's Paws, Toy Graphic Library & GameEngine
