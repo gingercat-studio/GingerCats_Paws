@@ -3,9 +3,9 @@ language: cpp
 
 # Compiler selection
 compiler:
-	-clang
-	-gcc
+ -clang
+ -gcc
 
 #Build steps
 script:
-	-cd build
+ -cd build
