@@ -1,0 +1,6 @@
+﻿#ifndef CATPAWS_CPCORE_CPMEMORY_H_
+#define CATPAWS_CPCORE_CPMEMORY_H_
+
+
+
+#endif

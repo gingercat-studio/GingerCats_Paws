@@ -6,6 +6,8 @@
 
 int main()
 {
+    CPLinearAllocator LinearAlloc(100, 0);
+    auto LinAlloc = allocator::AllocateNew<int>(LinearAlloc, 100);
     std::cout << "Hello World!\n"; 
 }
 

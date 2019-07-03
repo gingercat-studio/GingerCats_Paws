@@ -1,6 +1,49 @@
 ﻿#ifndef CATPAWS_CPCORE_CPMALLOC_H_
 #define CATPAWS_CPCORE_CPMALLOC_H_
 
+//Before do real thing, I just followed Tiago Costa's GameDev Tutorial
+//https://www.gamedev.net/articles/programming/general-and-gameplay-programming/c-custom-memory-allocation-r3010/
+
+namespace PtrMath{
+    inline void* AlignFoward(void* address, uint8_t alignment)
+    {
+        return (void*)
+            ((reinterpret_cast<uintptr_t>(address) +
+                static_cast<uintptr_t>(alignment - 1)) &
+                static_cast<uintptr_t>(~(alignment - 1)));
+    }
+
+    inline uintptr_t AlignFowardAdjustment(void* address, uint8_t alignment)
+    {
+        auto adjustment = alignment -
+            (reinterpret_cast<uintptr_t>(address) &
+                static_cast<uintptr_t>(alignment - 1));
+
+        if (adjustment == alignment) return 0;
+        return adjustment;
+    }
+
+    inline uintptr_t AlignFowardAdjustmentWithHeader(
+        void* address, uint8_t alignment, uint8_t headersize)
+    {
+        auto adjustment = AlignFowardAdjustment(address, alignment);
+        uintptr_t neededspace = headersize;
+
+        if (adjustment < neededspace)
+        {
+            neededspace -= adjustment;
+            adjustment += static_cast<uint8_t>(alignment) * 
+                static_cast<uint8_t>((neededspace / alignment));
+            if ((neededspace % alignment) > 0)
+            {
+                adjustment += alignment;
+            }
+        }
+
+        return adjustment;
+    }
+}
+
 class CPAllocator
 {
 public:
@@ -10,12 +53,12 @@ public:
         : start_{ start }, 
         size_{ size }, 
         used_memory_ { 0 }, 
-        num_allocators_ { 0 }
+        num_allocations_ { 0 }
     {}
 
     virtual ~CPAllocator()
     {
-        assert(num_allocators_ == 0 && used_memory_ == 0);
+        assert(num_allocations_ == 0 && used_memory_ == 0);
         start_ = nullptr;
         size_ = 0;
     }
@@ -25,13 +68,13 @@ public:
     void* Start() const { return start_; }
     size_t Size() const { return size_; }
     size_t UsedMemory() const { return used_memory_; }
-    size_t NumAllocation() const { return num_allocators_; }
+    size_t NumAllocation() const { return num_allocations_; }
 
 protected:
     void* start_;
     size_t size_;
     size_t used_memory_;
-    size_t num_allocators_;
+    size_t num_allocations_;
 };
 
 namespace allocator

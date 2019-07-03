@@ -3,5 +3,7 @@
 
 #include "CPInclude.h"
 #include "CPMalloc.h"
+#include "CPMemory.h"
+#include "CPLinearMalloc.h"
 
 #endif /*CATPAWS_CPCORE_CPCORE_H_*/
