@@ -4,62 +4,12 @@
 //Before do real thing, I just followed Tiago Costa's GameDev Tutorial
 //https://www.gamedev.net/articles/programming/general-and-gameplay-programming/c-custom-memory-allocation-r3010/
 
-namespace PtrMath{
-    inline void* AlignFoward(void* address, uint8_t alignment)
-    {
-        return (void*)
-            ((reinterpret_cast<uintptr_t>(address) +
-                static_cast<uintptr_t>(alignment - 1)) &
-                static_cast<uintptr_t>(~(alignment - 1)));
-    }
-
-    inline uintptr_t AlignFowardAdjustment(void* address, uint8_t alignment)
-    {
-        auto adjustment = alignment -
-            (reinterpret_cast<uintptr_t>(address) &
-                static_cast<uintptr_t>(alignment - 1));
-
-        if (adjustment == alignment) return 0;
-        return adjustment;
-    }
-
-    inline uintptr_t AlignFowardAdjustmentWithHeader(
-        void* address, uint8_t alignment, uint8_t headersize)
-    {
-        auto adjustment = AlignFowardAdjustment(address, alignment);
-        uintptr_t neededspace = headersize;
-
-        if (adjustment < neededspace)
-        {
-            neededspace -= adjustment;
-            adjustment += static_cast<uintptr_t>(alignment) * 
-                static_cast<uintptr_t>((neededspace / alignment));
-            if ((neededspace % alignment) > 0)
-            {
-                adjustment += alignment;
-            }
-        }
-
-        return adjustment;
-    }
-
-    inline void* Add(void* ptr, size_t addsize)
-    {
-        return (void*)(reinterpret_cast<uintptr_t>(ptr)+addsize);
-    }
-
-    inline const void* Add(const void* ptr, size_t addsize)
-    {
-        return (const void*)(reinterpret_cast<uintptr_t>(ptr) + addsize);
-    }
-}
-
 class CPAllocator
 {
 public:
     CPAllocator() = delete;
 
-    CPAllocator(size_t size, void* start)
+    CPAllocator(std::size_t size, void* start)
         : start_{ start }, 
         size_{ size }, 
         used_memory_ { 0 }, 
@@ -73,18 +23,18 @@ public:
         size_ = 0;
     }
 
-    virtual void* Allocate(size_t size, uint8_t alignment = 4) = 0;
+    virtual void* Allocate(std::size_t size, uint8_t alignment = 4) = 0;
     virtual void Deallocate(void* p) = 0;
     void* Start() const { return start_; }
-    size_t Size() const { return size_; }
-    size_t UsedMemory() const { return used_memory_; }
-    size_t NumAllocation() const { return num_allocations_; }
+    std::size_t Size() const { return size_; }
+    std::size_t UsedMemory() const { return used_memory_; }
+    std::size_t NumAllocation() const { return num_allocations_; }
 
 protected:
     void* start_;
-    size_t size_;
-    size_t used_memory_;
-    size_t num_allocations_;
+    std::size_t size_;
+    std::size_t used_memory_;
+    std::size_t num_allocations_;
 };
 
 namespace Allocator
@@ -105,12 +55,12 @@ namespace Allocator
         allocator.Deallocate(&object);
     }
 
-    template<class T> T* AllocateArray(CPAllocator& allocator, size_t length)
+    template<class T> T* AllocateArray(CPAllocator& allocator, std::size_t length)
     {
         assert(length != 0);
-        uint8_t headersize = sizeof(size_t) / sizeof(T);
+        uint8_t headersize = sizeof(std::size_t) / sizeof(T);
 
-        if (sizeof(size_t) & sizeof(T) > 0)
+        if (sizeof(std::size_t) & sizeof(T) > 0)
         {
             ++headersize;
         }
@@ -118,9 +68,9 @@ namespace Allocator
         T* p = ((T*)allocator.Allocate(sizeof(T) * 
             (length + headersize), alignof(T))) + headersize;
 
-        *(((size_t*)p)--) = length;
+        *(((std::size_t*)p)--) = length;
 
-        for (size_t i = 0; i < length; i++)
+        for (std::size_t i = 0; i < length; i++)
         {
             new (&p) T;
         }
@@ -131,16 +81,16 @@ namespace Allocator
     template <class T> void DeallocateArray(CPAllocator& allocator, T* array)
     {
         assert(array != nullptr);
-        size_t length = *(((size_t*)array)--);
+        std::size_t length = *(((std::size_t*)array)--);
 
-        for (size_t i = 0; i < length; i++)
+        for (std::size_t i = 0; i < length; i++)
         {
             array.~T();
         }
 
-        uint8_t headersize = sizeof(size_t) / sizeof(T);
+        uint8_t headersize = sizeof(std::size_t) / sizeof(T);
 
-        if (sizeof(size_t) % sizeof(T) > 0)
+        if (sizeof(std::size_t) % sizeof(T) > 0)
         {
             headersize++;
         }

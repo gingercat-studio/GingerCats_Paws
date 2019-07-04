@@ -16,17 +16,28 @@ private:
 
 int main()
 {
-    size_t preallocsize = 1024 * 1024;
+    std::size_t preallocsize = 1024 * 1024;
     void* preallocmemory = nullptr;
     preallocmemory = malloc(preallocsize);
 
     auto someallocator =
         new (preallocmemory)
         CPLinearAllocator(preallocsize - sizeof(CPLinearAllocator),
-            PtrMath::Add(preallocmemory, sizeof(CPLinearAllocator)));
+            AddressUtil::MovePtr(preallocmemory, sizeof(CPLinearAllocator)));
    
-    auto testinst = Allocator::AllocateNew<TestClass>(*someallocator);
-
+    int count = 0;
+    while (true)
+    {
+        auto testinst = Allocator::AllocateNew<TestClass>(*someallocator);
+        if (someallocator->Size() - someallocator->UsedMemory() 
+            < sizeof(CPLinearAllocator))
+        {
+            std::cout << "Linear Allocator Full!\n";
+            break;
+        }
+        ++count;
+    }
+    
     std::cout << "Memory Allocator Done!\n"; 
 }
 

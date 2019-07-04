@@ -10,6 +10,7 @@
 
 // for temporary include for convinience
 // TODO: assertion 관련 크래시 구현해야 합니다.
+#include <cstddef>
 #include <cassert>
 
 

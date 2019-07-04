@@ -136,6 +136,7 @@
     <None Include="..\.editorconfig" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\CPAddressUtil.h" />
     <ClInclude Include="Include\CPCore.h" />
     <ClInclude Include="Include\CPInclude.h" />
     <ClInclude Include="Include\CPLinearMalloc.h" />
