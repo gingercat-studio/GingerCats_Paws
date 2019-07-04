@@ -24,8 +24,8 @@ int main()
         new (preallocmemory)
         CPLinearAllocator(preallocsize - sizeof(CPLinearAllocator),
             PtrMath::Add(preallocmemory, sizeof(CPLinearAllocator)));
-    
-    auto testinst = allocator::AllocateNew<TestClass>(*someallocator);
+   
+    auto testinst = Allocator::AllocateNew<TestClass>(*someallocator);
 
     std::cout << "Memory Allocator Done!\n"; 
 }

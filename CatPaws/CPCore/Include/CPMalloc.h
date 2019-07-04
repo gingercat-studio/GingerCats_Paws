@@ -87,7 +87,7 @@ protected:
     size_t num_allocations_;
 };
 
-namespace allocator
+namespace Allocator
 {
     template<class T> T* AllocateNew(CPAllocator& allocator)
     {
