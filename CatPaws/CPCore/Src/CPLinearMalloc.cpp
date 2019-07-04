@@ -4,7 +4,7 @@ CPLinearAllocator::CPLinearAllocator(size_t size, void* start)
     : CPAllocator{ size, start },
     current_pos_{start}
 {
-    
+    assert(size > 0);
 }
 
 CPLinearAllocator::~CPLinearAllocator()

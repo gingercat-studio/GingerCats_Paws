@@ -32,8 +32,8 @@ namespace PtrMath{
         if (adjustment < neededspace)
         {
             neededspace -= adjustment;
-            adjustment += static_cast<uint8_t>(alignment) * 
-                static_cast<uint8_t>((neededspace / alignment));
+            adjustment += static_cast<uintptr_t>(alignment) * 
+                static_cast<uintptr_t>((neededspace / alignment));
             if ((neededspace % alignment) > 0)
             {
                 adjustment += alignment;
@@ -41,6 +41,16 @@ namespace PtrMath{
         }
 
         return adjustment;
+    }
+
+    inline void* Add(void* ptr, size_t addsize)
+    {
+        return (void*)(reinterpret_cast<uintptr_t>(ptr)+addsize);
+    }
+
+    inline const void* Add(const void* ptr, size_t addsize)
+    {
+        return (const void*)(reinterpret_cast<uintptr_t>(ptr) + addsize);
     }
 }
 
@@ -79,7 +89,7 @@ protected:
 
 namespace allocator
 {
-    template<class T> T* AllocateNew(CPAllocator& allocator, size_t length)
+    template<class T> T* AllocateNew(CPAllocator& allocator)
     {
         return new (allocator.Allocate(sizeof(T), alignof(T))) T;
     }

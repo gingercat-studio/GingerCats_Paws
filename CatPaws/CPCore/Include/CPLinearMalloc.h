@@ -9,8 +9,8 @@ public:
     CPLinearAllocator(size_t size, void* start);
     virtual ~CPLinearAllocator();
 
-    virtual void* Allocate(size_t size, uint8_t alignment = 4);
-    virtual void Deallocate(void* p);
+    virtual void* Allocate(size_t size, uint8_t alignment = 4) override;
+    virtual void Deallocate(void* p) override;
     void Clear();
 
 private:

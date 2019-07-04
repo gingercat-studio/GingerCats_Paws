@@ -4,11 +4,30 @@
 #include <iostream>
 #include "CPCore.h"
 
+class TestClass
+{
+public:
+    TestClass() = default;
+   
+private:
+    int a = 0;
+    int b = 1;
+};
+
 int main()
 {
-    CPLinearAllocator LinearAlloc(100, 0);
-    auto LinAlloc = allocator::AllocateNew<int>(LinearAlloc, 100);
-    std::cout << "Hello World!\n"; 
+    size_t preallocsize = 1024 * 1024;
+    void* preallocmemory = nullptr;
+    preallocmemory = malloc(preallocsize);
+
+    auto someallocator =
+        new (preallocmemory)
+        CPLinearAllocator(preallocsize - sizeof(CPLinearAllocator),
+            PtrMath::Add(preallocmemory, sizeof(CPLinearAllocator)));
+    
+    auto testinst = allocator::AllocateNew<TestClass>(*someallocator);
+
+    std::cout << "Memory Allocator Done!\n"; 
 }
 
 // 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴
