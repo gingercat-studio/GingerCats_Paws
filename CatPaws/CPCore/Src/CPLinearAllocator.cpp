@@ -16,7 +16,7 @@ void* CPLinearAllocator::Allocate(std::size_t size, uint8_t alignment)
 {
     assert(size != 0);
     uintptr_t adjustment =
-        AddressUtil::AlignFowardAdjustment(current_pos_, alignment);
+        PtrMath::AlignFowardAdjustment(current_pos_, alignment);
 
     if (used_memory_ + adjustment + size > size_)
         return nullptr;

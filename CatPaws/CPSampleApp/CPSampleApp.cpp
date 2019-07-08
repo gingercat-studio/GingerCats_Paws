@@ -14,22 +14,48 @@ private:
     int b = 1;
 };
 
-int main()
+class CPTestMallocContainer
 {
-    std::size_t preallocsize = 1024 * 1024;
-    void* preallocmemory = nullptr;
-    preallocmemory = malloc(preallocsize);
+public:
+    CPTestMallocContainer() = delete;
+    CPTestMallocContainer(const CPTestMallocContainer&) = delete;
+    CPTestMallocContainer& operator=(const CPTestMallocContainer&) = delete;
 
-    auto someallocator =
-        new (preallocmemory)
-        CPLinearAllocator(preallocsize - sizeof(CPLinearAllocator),
-            AddressUtil::MovePtr(preallocmemory, sizeof(CPLinearAllocator)));
-   
+    CPTestMallocContainer(std::size_t demandedmemorysize)
+        : allocated_memory_size_{demandedmemorysize}
+    {
+        allocated_memory_ = std::malloc(demandedmemorysize);
+    }
+
+    ~CPTestMallocContainer()
+    {
+        delete allocated_memory_;
+    }
+
+    void* AllocatedMemory() { return allocated_memory_; }
+    std::size_t AllocatedMemorySize() { return allocated_memory_size_; }
+
+private:
+    void* allocated_memory_;
+    std::size_t allocated_memory_size_;
+};
+
+void LinearAllocatorTest()
+{
+    CPTestMallocContainer temp_container(1024*1024);
+    std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
+    
+    auto somelinearallocator =
+        new (temp_container.AllocatedMemory())
+        CPLinearAllocator(pre_allocated_memory_size - sizeof(CPLinearAllocator),
+            PtrMath::Move
+            (temp_container.AllocatedMemory(), sizeof(CPLinearAllocator)));
+
     int count = 0;
     while (true)
     {
-        auto testinst = Allocator::AllocateNew<TestClass>(*someallocator);
-        if (someallocator->Size() - someallocator->UsedMemory() 
+        auto testinst = Allocator::AllocateNew<TestClass>(*somelinearallocator);
+        if (somelinearallocator->Size() - somelinearallocator->UsedMemory()
             < sizeof(CPLinearAllocator))
         {
             std::cout << "Linear Allocator Full!\n";
@@ -37,6 +63,40 @@ int main()
         }
         ++count;
     }
+}
+
+void StackAllocatorTest()
+{
+    CPTestMallocContainer temp_container(1024 * 1024);
+    std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
+
+    auto somestackallocator =
+        new (temp_container.AllocatedMemory())
+        CPStackAllocator(pre_allocated_memory_size - sizeof(CPStackAllocator),
+            PtrMath::Move
+            (temp_container.AllocatedMemory(), sizeof(CPStackAllocator)));
+
+    int count = 0;
+    while (true)
+    {
+        auto testinst = Allocator::AllocateNew<TestClass>(*somestackallocator);
+        if (somestackallocator->Size() - somestackallocator->UsedMemory()
+            < sizeof(CPLinearAllocator))
+        {
+            std::cout << "Stack Allocator Full!\n";
+            break;
+        }
+        ++count;
+    }
+}
+
+int main()
+{
+    LinearAllocatorTest();
+    StackAllocatorTest();
+ 
+
+
     
     std::cout << "Memory Allocator Done!\n"; 
 }

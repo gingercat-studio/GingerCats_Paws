@@ -5,6 +5,7 @@
 #include "CPAddressUtil.h"
 #include "CPMalloc.h"
 #include "CPMemory.h"
-#include "CPLinearMalloc.h"
+#include "CPLinearAllocator.h"
+#include "CPStackAllocator.h"
 
 #endif /*CATPAWS_CPCORE_CPCORE_H_*/

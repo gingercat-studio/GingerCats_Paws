@@ -139,12 +139,14 @@
     <ClInclude Include="Include\CPAddressUtil.h" />
     <ClInclude Include="Include\CPCore.h" />
     <ClInclude Include="Include\CPInclude.h" />
-    <ClInclude Include="Include\CPLinearMalloc.h" />
+    <ClInclude Include="Include\CPLinearAllocator.h" />
     <ClInclude Include="Include\CPMalloc.h" />
     <ClInclude Include="Include\CPMemory.h" />
+    <ClInclude Include="Include\CPStackAllocator.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Src\CPLinearMalloc.cpp" />
+    <ClCompile Include="Src\CPLinearAllocator.cpp" />
+    <ClCompile Include="Src\CPStackAllocator.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

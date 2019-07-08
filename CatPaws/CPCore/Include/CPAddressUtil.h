@@ -1,7 +1,7 @@
 ﻿#ifndef CATPAWS_CPCORE_CPADDRESSUTIL_H_
 #define CATPAWS_CPCORE_CPADDRESSUTIL_H_
 
-namespace AddressUtil {
+namespace PtrMath {
     inline void* AlignFoward(void* address, uint8_t alignment)
     {
         return (void*)
@@ -40,12 +40,14 @@ namespace AddressUtil {
         return adjustment;
     }
 
-    inline void* MovePtr(void* ptr, std::size_t amount)
+    // Do we have possibility if amount is over int64 max?
+    inline void* Move(void* ptr, int64_t amount)
     {
         return (void*)(reinterpret_cast<uintptr_t>(ptr) + amount);
     }
 
-    inline const void* MovePtr(const void* ptr, std::size_t amount)
+    // Do we have possibility if amount is over int64 max?
+    inline const void* Move(const void* ptr, int64_t amount)
     {
         return (const void*)(reinterpret_cast<uintptr_t>(ptr) + amount);
     }
