@@ -56,7 +56,7 @@ void LinearAllocatorTest()
     {
         auto testinst = Allocator::AllocateNew<TestClass>(*somelinearallocator);
         if (somelinearallocator->Size() - somelinearallocator->UsedMemory()
-            < sizeof(CPLinearAllocator))
+            < sizeof(TestClass))
         {
             std::cout << "Linear Allocator Full!\n";
             break;
@@ -67,21 +67,23 @@ void LinearAllocatorTest()
 
 void StackAllocatorTest()
 {
-    CPTestMallocContainer temp_container(1024 * 1024);
+    CPTestMallocContainer temp_container(1024*1024);
     std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
+    assert(pre_allocated_memory_size > sizeof(CPStackAllocator));
 
     auto somestackallocator =
         new (temp_container.AllocatedMemory())
         CPStackAllocator(pre_allocated_memory_size - sizeof(CPStackAllocator),
             PtrMath::Move
             (temp_container.AllocatedMemory(), sizeof(CPStackAllocator)));
-
     int count = 0;
     while (true)
     {
         auto testinst = Allocator::AllocateNew<TestClass>(*somestackallocator);
-        if (somestackallocator->Size() - somestackallocator->UsedMemory()
-            < sizeof(CPLinearAllocator))
+        // The "real" stack size is sizeof(someclass) + stack header size
+        if (somestackallocator->Size() > somestackallocator->UsedMemory() 
+            && somestackallocator->Size() - somestackallocator->UsedMemory()
+            < (sizeof(TestClass) + somestackallocator->SizeofHeader()))
         {
             std::cout << "Stack Allocator Full!\n";
             break;
@@ -90,11 +92,41 @@ void StackAllocatorTest()
     }
 }
 
+void FreeListAllocatorTest()
+{
+    CPTestMallocContainer temp_container(1024 * 1024);
+    std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
+
+    auto somestackallocator =
+        new (temp_container.AllocatedMemory())
+        CPFreeListAllocator
+        (pre_allocated_memory_size - sizeof(CPFreeListAllocator),
+            PtrMath::Move
+            (temp_container.AllocatedMemory(), sizeof(CPFreeListAllocator)));
+
+    int count = 0;
+    while (true)
+    {
+        auto testinst = Allocator::AllocateNew<TestClass>(*somestackallocator);
+        // is this stuff right? 
+        if (somestackallocator->Size() - somestackallocator->UsedMemory()
+            < (sizeof(TestClass) 
+                + somestackallocator->SizeofBlock() 
+                + somestackallocator->SizeofHeader()))
+        {
+            std::cout << "FreeList Allocator Full!\n";
+            break;
+        }
+        ++count;
+    }
+}
+
+
 int main()
 {
     LinearAllocatorTest();
     StackAllocatorTest();
- 
+    FreeListAllocatorTest();
 
 
     

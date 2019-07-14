@@ -51,7 +51,9 @@ void* CPStackAllocator::Allocate(std::size_t size, uint8_t alignment)
 
 void CPStackAllocator::Deallocate(void* p)
 {
+#if _DEBUG
     assert(p == prev_position_);
+#endif
     // Access the allocation header
     CPAllocationHeader* header = (CPAllocationHeader*)
         (PtrMath::Move(p, 

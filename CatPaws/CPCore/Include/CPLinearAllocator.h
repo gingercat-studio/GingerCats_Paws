@@ -1,7 +1,7 @@
 ﻿#ifndef CATPAWS_CPCORE_CPLINEARALLOCATOR_H_
 #define CATPAWS_CPCORE_CPLINEARALLOCATOR_H_
 
-#include "CPMalloc.h"
+#include "CPAllocator.h"
 
 class CPLinearAllocator : public CPAllocator
 {
