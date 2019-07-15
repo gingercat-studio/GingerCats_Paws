@@ -1,7 +1,12 @@
 ﻿// CPSampleApp.cpp : 이 파일에는 'main' 함수가 포함됩니다. 
 // 거기서 프로그램 실행이 시작되고 종료됩니다.
 
+// for benchmark and test
 #include <iostream>
+#include <vector> 
+#include <algorithm>
+#include <random>
+
 #include "CPCore.h"
 
 class TestClass
@@ -52,6 +57,8 @@ void LinearAllocatorTest()
             (temp_container.AllocatedMemory(), sizeof(CPLinearAllocator)));
 
     int count = 0;
+    std::vector<TestClass*> ptr_container;
+
     while (true)
     {
         auto testinst = Allocator::AllocateNew<TestClass>(*somelinearallocator);
@@ -62,12 +69,25 @@ void LinearAllocatorTest()
             break;
         }
         ++count;
+        ptr_container.push_back(testinst);
     }
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(ptr_container.begin(), ptr_container.end(), g);
+
+    for (auto ptr : ptr_container)
+    {
+        //Allocator::DeallocateDelete(*somelinearallocator, ptr);
+        somelinearallocator->Clear();
+    }
+
+    std::cout << "Linear Allocator Full!\n";
 }
 
 void StackAllocatorTest()
 {
-    CPTestMallocContainer temp_container(1024*1024);
+    CPTestMallocContainer temp_container(1024 * 1024);
     std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
     assert(pre_allocated_memory_size > sizeof(CPStackAllocator));
 
@@ -77,19 +97,42 @@ void StackAllocatorTest()
             PtrMath::Move
             (temp_container.AllocatedMemory(), sizeof(CPStackAllocator)));
     int count = 0;
+    std::vector<TestClass*> ptr_container;
+
     while (true)
     {
         auto testinst = Allocator::AllocateNew<TestClass>(*somestackallocator);
+        ++count;
+        ptr_container.push_back(testinst);
+
         // The "real" stack size is sizeof(someclass) + stack header size
-        if (somestackallocator->Size() > somestackallocator->UsedMemory() 
+        if (somestackallocator->Size() > somestackallocator->UsedMemory()
             && somestackallocator->Size() - somestackallocator->UsedMemory()
             < (sizeof(TestClass) + somestackallocator->SizeofHeader()))
         {
             std::cout << "Stack Allocator Full!\n";
             break;
         }
-        ++count;
     }
+
+    // stack allocator is not free access memory allocator.
+    // use FILO Strategy
+    //std::random_device rd;
+    //std::mt19937 g(rd());
+    //std::shuffle(ptr_container.begin(), ptr_container.end(), g);
+    while (auto last = ptr_container.size())
+    {
+        auto ptr = ptr_container[last-1];
+        Allocator::DeallocateDelete(*somestackallocator, *ptr);
+        ptr_container.pop_back();
+    }
+
+    std::cout << "Stack Allocator Deallocated!\n";
+
+    //for (auto ptr : ptr_container)
+    //{
+    //    Allocator::DeallocateDelete(*somestackallocator, ptr);
+    //}
 }
 
 void FreeListAllocatorTest()
@@ -97,7 +140,7 @@ void FreeListAllocatorTest()
     CPTestMallocContainer temp_container(1024 * 1024);
     std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
 
-    auto somestackallocator =
+    auto somefreelistallocator =
         new (temp_container.AllocatedMemory())
         CPFreeListAllocator
         (pre_allocated_memory_size - sizeof(CPFreeListAllocator),
@@ -105,20 +148,78 @@ void FreeListAllocatorTest()
             (temp_container.AllocatedMemory(), sizeof(CPFreeListAllocator)));
 
     int count = 0;
+    std::vector<TestClass*> ptr_container;
+
     while (true)
     {
-        auto testinst = Allocator::AllocateNew<TestClass>(*somestackallocator);
+        auto testinst = Allocator::AllocateNew<TestClass>(*somefreelistallocator);
         // is this stuff right? 
-        if (somestackallocator->Size() - somestackallocator->UsedMemory()
+        if (somefreelistallocator->Size() - somefreelistallocator->UsedMemory()
             < (sizeof(TestClass) 
-                + somestackallocator->SizeofBlock() 
-                + somestackallocator->SizeofHeader()))
+                + somefreelistallocator->SizeofBlock() 
+                + somefreelistallocator->SizeofHeader()))
         {
             std::cout << "FreeList Allocator Full!\n";
             break;
         }
+
+        ptr_container.push_back(testinst);
         ++count;
     }
+
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(ptr_container.begin(), ptr_container.end(), g);
+
+    for (auto ptr : ptr_container)
+    {
+        Allocator::DeallocateDelete(*somefreelistallocator, *ptr);
+    }
+
+    std::cout << "FreeList Allocator Deallocated!\n";
+}
+
+void PoolAllocatorTest()
+{
+    CPTestMallocContainer temp_container(1024 * 1024);
+    std::size_t pre_allocated_memory_size = temp_container.AllocatedMemorySize();
+
+    auto somepoolallocator =
+        new (temp_container.AllocatedMemory())
+        CPPoolAllocator
+        (   sizeof(TestClass), alignof(TestClass),
+            pre_allocated_memory_size - sizeof(CPPoolAllocator),
+            PtrMath::Move
+            (temp_container.AllocatedMemory(), sizeof(CPPoolAllocator)));
+
+    int count = 0;
+    
+    std::vector<TestClass*> ptr_container;
+    while (true)
+    {
+        auto testinst = Allocator::AllocateNew<TestClass>(*somepoolallocator);
+        // is this stuff right? 
+        if (somepoolallocator->Size() - somepoolallocator->UsedMemory()
+            < (sizeof(TestClass)))
+        {
+            std::cout << "Pool Allocator Full!\n";
+            break;
+        }
+        ptr_container.push_back(testinst);
+        ++count;
+    }
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(ptr_container.begin(), ptr_container.end(), g);
+
+    for (auto ptr : ptr_container)
+    {
+        Allocator::DeallocateDelete(*somepoolallocator, *ptr);
+    }
+
+    std::cout << "Pool Allocator Deallocated!\n";
 }
 
 
@@ -127,10 +228,9 @@ int main()
     LinearAllocatorTest();
     StackAllocatorTest();
     FreeListAllocatorTest();
-
-
+    PoolAllocatorTest();
     
-    std::cout << "Memory Allocator Done!\n"; 
+    std::cout << "Memory Allocator Test Done!\n"; 
 }
 
 // 프로그램 실행: <Ctrl+F5> 또는 [디버그] > [디버깅하지 않고 시작] 메뉴

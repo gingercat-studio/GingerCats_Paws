@@ -10,5 +10,6 @@
 #include "CPLinearAllocator.h"
 #include "CPStackAllocator.h"
 #include "CPFreeListAllocator.h"
+#include "CPPoolAllocator.h"
 
 #endif /*CATPAWS_CPCORE_CPCORE_H_*/

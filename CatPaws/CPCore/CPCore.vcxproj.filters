@@ -44,6 +44,9 @@
     <ClInclude Include="Include\CPAllocator.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Include\CPPoolAllocator.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Src\CPStackAllocator.cpp">
@@ -53,6 +56,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Src\CPFreeListAllocator.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\CPPoolAllocator.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

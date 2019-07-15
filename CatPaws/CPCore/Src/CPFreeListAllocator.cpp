@@ -14,6 +14,8 @@ CPFreeListAllocator::~CPFreeListAllocator()
     free_blocks_ = nullptr;
 }
 
+// currently followed method "first-fit method" 
+// "best fit" method has less fragmentation
 void* CPFreeListAllocator::Allocate(std::size_t size, uint8_t alignment)
 {
     assert(size != 0 && alignment != 0);
