@@ -11,5 +11,6 @@
 #include "CPStackAllocator.h"
 #include "CPFreeListAllocator.h"
 #include "CPPoolAllocator.h"
+#include "CPProxyAllocator.h"
 
 #endif /*CATPAWS_CPCORE_CPCORE_H_*/

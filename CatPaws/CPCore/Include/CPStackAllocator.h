@@ -11,6 +11,7 @@ public:
 
     virtual void* Allocate(std::size_t size, uint8_t alignment = 4) override;
     virtual void Deallocate(void* p) override;
+
     constexpr std::size_t SizeofHeader() { return sizeof(CPAllocationHeader); }
 
 private:

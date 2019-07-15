@@ -11,6 +11,7 @@ public:
 
     virtual void* Allocate(std::size_t size, uint8_t alignment = 4) override;
     virtual void Deallocate(void* p) override;
+
     void Clear();
 
 private:
@@ -21,6 +22,5 @@ private:
     // variables
     void* current_pos_;
 };
-
 
 #endif
