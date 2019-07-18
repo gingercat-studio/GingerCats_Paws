@@ -6,6 +6,7 @@
 #include <vector> 
 #include <algorithm>
 #include <random>
+#include <map>
 
 #include "CPCore.h"
 
@@ -43,6 +44,48 @@ public:
 private:
     void* allocated_memory_;
     std::size_t allocated_memory_size_;
+};
+
+class GeneralMemoryManager // just for temp name
+{
+private:
+    std::size_t allocated_memory_size_;
+    std::map<std::size_t, CPPoolAllocator*> memorypools_;
+public:
+    GeneralMemoryManager()
+    {
+    
+    }
+    ~GeneralMemoryManager()
+    {
+    
+    }
+
+    void ReservePool()
+    {
+        for (std::size_t i = 1, e = 4; i < e; ++i)
+        {
+            std::size_t class_size = (1LL << i);
+            assert(class_size < UINT8_MAX);
+            std::size_t pre_allocated_memory_size = class_size * 100;
+            void* malloc_memory = std::malloc(pre_allocated_memory_size);
+            auto pool = new(malloc_memory) CPPoolAllocator
+            (class_size, static_cast<uint8_t>(class_size),
+                pre_allocated_memory_size - sizeof(CPPoolAllocator),
+                PtrMath::Move
+                (malloc_memory, sizeof(CPPoolAllocator)));
+        }        
+    }
+    // Pool Allocator with freeList allocator
+
+    void ClearPool()
+    {
+        for (auto pair : memorypools_)
+        {
+            auto pool = pair.second;
+            pool->~CPPoolAllocator();
+       }
+    }
 };
 
 void LinearAllocatorTest()
