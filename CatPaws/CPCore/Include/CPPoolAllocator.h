@@ -14,6 +14,8 @@ public:
     virtual void* Allocate(std::size_t size, uint8_t alignment = 4) override;
     virtual void Deallocate(void* p) override;
 
+    auto ObjectSize() { return object_size_; }
+
 private:
     // Prevent Copy
     CPPoolAllocator(const CPPoolAllocator&) = delete;

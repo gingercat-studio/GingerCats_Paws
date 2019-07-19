@@ -20,6 +20,33 @@ private:
     int b = 1;
 };
 
+class TestClass2
+{
+public:
+    TestClass2() = default;
+
+private:
+    long long a = 0;
+    int b = 1;
+    std::string string = "something woring";
+};
+
+class TestClass3
+{
+public:
+    TestClass3() = default;
+
+private:
+    long long a = 0;
+    int b = 1;
+    std::string string1 = "something woring";
+    std::string string2 = "something woring";
+    std::string string3 = "something woring";
+    std::string string4 = "something woring";
+    std::string string5 = "something woring";
+    std::string string6 = "something woring";
+};
+
 class CPTestMallocContainer
 {
 public:
@@ -46,34 +73,65 @@ private:
     std::size_t allocated_memory_size_;
 };
 
-class GeneralMemoryManager // just for temp name
+class CPMemoryPools  : public CPAllocator// just for temp name
 {
 private:
-    std::size_t allocated_memory_size_;
-    std::map<std::size_t, CPPoolAllocator*> memorypools_;
+    struct CPMemoryKey
+    {
+        std::size_t size_;
+        uint8_t alignment_;
+        bool operator<(const CPMemoryKey& other) const
+        {
+            return size_ < other.size_&& alignment_ < other.alignment_;
+        }
+    };
+
+    struct CPPoolAllocatorNode
+    {
+        CPPoolAllocator* pool_ = nullptr;
+        CPPoolAllocatorNode* next_ = nullptr;
+    };
+
+    std::map<CPMemoryKey, CPPoolAllocatorNode> memorypools_;
+    std::map<void*, CPPoolAllocator*> pooldictionary_;
+
 public:
-    GeneralMemoryManager()
+    CPMemoryPools()
+        : CPAllocator(0, nullptr)
     {
     
     }
-    ~GeneralMemoryManager()
+
+    virtual ~CPMemoryPools()
     {
     
     }
 
     void ReservePool()
     {
-        for (std::size_t i = 1, e = 4; i < e; ++i)
+        for (std::size_t i = 3, e = 13; i < e; ++i)
         {
-            std::size_t class_size = (1LL << i);
-            assert(class_size < UINT8_MAX);
-            std::size_t pre_allocated_memory_size = class_size * 100;
-            void* malloc_memory = std::malloc(pre_allocated_memory_size);
-            auto pool = new(malloc_memory) CPPoolAllocator
-            (class_size, static_cast<uint8_t>(class_size),
-                pre_allocated_memory_size - sizeof(CPPoolAllocator),
-                PtrMath::Move
-                (malloc_memory, sizeof(CPPoolAllocator)));
+            std::size_t object_size = (1LL << i);
+            std::size_t pre_allocated_memory_size = object_size * 100 
+                + sizeof(CPPoolAllocator);
+
+            for (std::size_t align = 2, maxalign = 8; align < maxalign; ++align)
+            {
+                uint8_t alignment = 1 << align;
+                assert(alignment <= UINT8_MAX);
+                void* malloc_memory = std::malloc(pre_allocated_memory_size);
+
+                auto pool = new(malloc_memory) CPPoolAllocator
+                (object_size, alignment,
+                    pre_allocated_memory_size - sizeof(CPPoolAllocator),
+                    PtrMath::Move
+                    (malloc_memory, sizeof(CPPoolAllocator)));
+
+                CPMemoryKey key{ object_size, alignment };
+                memorypools_[key] = CPPoolAllocatorNode{ pool, nullptr };
+
+                size_ += pre_allocated_memory_size;
+            }
         }        
     }
     // Pool Allocator with freeList allocator
@@ -82,9 +140,33 @@ public:
     {
         for (auto pair : memorypools_)
         {
-            auto pool = pair.second;
-            pool->~CPPoolAllocator();
+            auto pool_node = pair.second;
+            pool_node.pool_->~CPPoolAllocator();
        }
+    }
+
+    virtual void* Allocate(std::size_t size, uint8_t alignment = 4) override
+    {
+        auto node = memorypools_[{size, alignment}];
+      
+        // should check pool is full
+        auto ptr = node.pool_->Allocate(size, alignment);
+        pooldictionary_[ptr] = node.pool_;
+        
+        used_memory_ += node.pool_->ObjectSize();
+        num_allocations_++;
+
+        return ptr;
+    }
+    
+    virtual void Deallocate(void* p) override
+    {
+        auto pool = pooldictionary_[p];
+        pooldictionary_.erase(p);
+        pool->Deallocate(p);
+
+        used_memory_ -= pool->ObjectSize();
+        num_allocations_--;
     }
 };
 
@@ -268,11 +350,29 @@ void PoolAllocatorTest()
 
 int main()
 {
-    LinearAllocatorTest();
-    StackAllocatorTest();
-    FreeListAllocatorTest();
-    PoolAllocatorTest();
-    
+    //LinearAllocatorTest();
+    //StackAllocatorTest();
+    //FreeListAllocatorTest();
+    //PoolAllocatorTest();
+
+    // WIP
+    //CPMemoryPools t;
+    //t.ReservePool();
+    //for (int i = 0, e = 100; i < e; ++i)
+    //{
+    //    auto testinst = Allocator::AllocateNew<TestClass>(t);
+    //}
+    //
+    //for (int i = 0, e = 100; i < e; ++i)
+    //{
+    //    auto testinst2 = Allocator::AllocateNew<TestClass2>(t);
+    //}
+    //
+    //for (int i = 0, e = 100; i < e; ++i)
+    //{
+    //    auto testinst3 = Allocator::AllocateNew<TestClass3>(t);
+    //}
+
     std::cout << "Memory Allocator Test Done!\n"; 
 }
 
