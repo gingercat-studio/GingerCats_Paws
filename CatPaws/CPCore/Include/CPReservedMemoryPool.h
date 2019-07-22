@@ -40,6 +40,7 @@ public:
     virtual void Deallocate(void* p) override;
 
 private:
+    // @todo arkiny remove stl from the header!
     std::unordered_map
         <CPMemKey, CPPoolAllocatorNode, CPMemKeyHashFunction> memorypools_;
     std::unordered_map<void*, CPPoolAllocator*> pooldictionary_;
