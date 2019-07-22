@@ -142,9 +142,11 @@
     <ClInclude Include="Include\CPInclude.h" />
     <ClInclude Include="Include\CPLinearAllocator.h" />
     <ClInclude Include="Include\CPAllocator.h" />
+    <ClInclude Include="Include\CPMath.h" />
     <ClInclude Include="Include\CPMemory.h" />
     <ClInclude Include="Include\CPPoolAllocator.h" />
     <ClInclude Include="Include\CPProxyAllocator.h" />
+    <ClInclude Include="Include\CPReservedMemoryPool.h" />
     <ClInclude Include="Include\CPStackAllocator.h" />
   </ItemGroup>
   <ItemGroup>
@@ -152,6 +154,7 @@
     <ClCompile Include="Src\CPLinearAllocator.cpp" />
     <ClCompile Include="Src\CPPoolAllocator.cpp" />
     <ClCompile Include="Src\CPProxyAllocator.cpp" />
+    <ClCompile Include="Src\CPReservedMemoryPool.cpp" />
     <ClCompile Include="Src\CPStackAllocator.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

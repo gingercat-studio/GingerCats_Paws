@@ -4,6 +4,7 @@
 #include "CPInclude.h"
 
 // Memory Libraries 
+#include "CPMath.h"
 #include "CPAddressUtil.h"
 #include "CPMemory.h"
 #include "CPAllocator.h"
@@ -12,5 +13,7 @@
 #include "CPFreeListAllocator.h"
 #include "CPPoolAllocator.h"
 #include "CPProxyAllocator.h"
+
+#include "CPReservedMemoryPool.h"
 
 #endif /*CATPAWS_CPCORE_CPCORE_H_*/

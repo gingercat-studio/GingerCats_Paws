@@ -12,6 +12,6 @@
 // TODO: assertion 관련 크래시 구현해야 합니다.
 #include <cstddef>
 #include <cassert>
-
+#include <unordered_map>
 
 #endif /*CATPAWS_CPCORE_CPINCLUDE_H_*/
