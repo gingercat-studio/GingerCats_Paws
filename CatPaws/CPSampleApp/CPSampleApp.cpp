@@ -6,11 +6,35 @@
 #include <vector> 
 #include <algorithm>
 #include <random>
-#include <map>
+#include <unordered_map>
+#include <cmath>
 
 #include "CPCore.h"
 
-class TestClass
+//#if _MSC_VER
+#if 1
+inline unsigned long long ExpandToPowerOf2(unsigned long long Value)
+{
+    unsigned long Index;
+    _BitScanReverse64(&Index, Value - 1);
+    return (1ULL << (Index + 1));
+}
+
+#else
+inline unsigned long long ExpandToPowerOf2(unsigned long long Value)
+{
+    return std::pow(2, std::ceil(std::log(Value) / std::log(2)));
+}
+
+#endif
+
+class BaseTestClass
+{
+public:
+    BaseTestClass() = default;
+};
+
+class TestClass : public BaseTestClass
 {
 public:
     TestClass() = default;
@@ -20,7 +44,7 @@ private:
     int b = 1;
 };
 
-class TestClass2
+class TestClass2 : public BaseTestClass
 {
 public:
     TestClass2() = default;
@@ -28,10 +52,10 @@ public:
 private:
     long long a = 0;
     int b = 1;
-    std::string string = "something woring";
+    std::string string = "something wrong";
 };
 
-class TestClass3
+class TestClass3 : public BaseTestClass
 {
 public:
     TestClass3() = default;
@@ -39,12 +63,12 @@ public:
 private:
     long long a = 0;
     int b = 1;
-    std::string string1 = "something woring";
-    std::string string2 = "something woring";
-    std::string string3 = "something woring";
-    std::string string4 = "something woring";
-    std::string string5 = "something woring";
-    std::string string6 = "something woring";
+    std::string string1 = "something wrong";
+    std::string string2 = "something wrong";
+    std::string string3 = "something wrong";
+    std::string string4 = "something wrong";
+    std::string string5 = "something wrong";
+    std::string string6 = "something wrong";
 };
 
 class CPTestMallocContainer
@@ -73,27 +97,41 @@ private:
     std::size_t allocated_memory_size_;
 };
 
+struct CPMemKey
+{
+    std::size_t size_;
+    uint8_t alignment_;
+    bool operator==(const CPMemKey& other) const
+    {
+        return (size_ == other.size_
+            && alignment_ == other.alignment_);
+    }
+};
+
+class CPMemKeyHashFunction 
+{
+public:
+
+    // Use sum of lengths of first and last names 
+    // as hash function. 
+    size_t operator()(const CPMemKey& p) const
+    {
+        return p.size_ ^ p.alignment_;
+    }
+};
+
+struct CPPoolAllocatorNode
+{
+    CPPoolAllocator* pool_ = nullptr;
+    CPPoolAllocatorNode* next_ = nullptr;
+};
+
 class CPMemoryPools  : public CPAllocator// just for temp name
 {
 private:
-    struct CPMemoryKey
-    {
-        std::size_t size_;
-        uint8_t alignment_;
-        bool operator<(const CPMemoryKey& other) const
-        {
-            return size_ < other.size_&& alignment_ < other.alignment_;
-        }
-    };
-
-    struct CPPoolAllocatorNode
-    {
-        CPPoolAllocator* pool_ = nullptr;
-        CPPoolAllocatorNode* next_ = nullptr;
-    };
-
-    std::map<CPMemoryKey, CPPoolAllocatorNode> memorypools_;
-    std::map<void*, CPPoolAllocator*> pooldictionary_;
+    std::unordered_map
+        <CPMemKey, CPPoolAllocatorNode, CPMemKeyHashFunction> memorypools_;
+    std::unordered_map<void*, CPPoolAllocator*> pooldictionary_;
 
 public:
     CPMemoryPools()
@@ -104,7 +142,17 @@ public:
 
     virtual ~CPMemoryPools()
     {
-    
+        std::size_t backup_used_mem = used_memory_;
+        std::size_t remain_memory = 0;
+        std::size_t remain_allocation = 0;
+        for (auto pair : memorypools_)
+        {
+            auto pool = pair.second.pool_;
+            remain_memory += pool->UsedMemory();
+            remain_allocation += pool->NumAllocation();
+        }
+        used_memory_ = remain_memory;
+        num_allocations_ = remain_allocation;
     }
 
     void ReservePool()
@@ -127,7 +175,7 @@ public:
                     PtrMath::Move
                     (malloc_memory, sizeof(CPPoolAllocator)));
 
-                CPMemoryKey key{ object_size, alignment };
+                CPMemKey key{ object_size, alignment };
                 memorypools_[key] = CPPoolAllocatorNode{ pool, nullptr };
 
                 size_ += pre_allocated_memory_size;
@@ -138,19 +186,19 @@ public:
 
     void ClearPool()
     {
-        for (auto pair : memorypools_)
+        for (auto pair : pooldictionary_)
         {
-            auto pool_node = pair.second;
-            pool_node.pool_->~CPPoolAllocator();
-       }
+            pair.second->Deallocate(pair.first);
+        }
     }
 
     virtual void* Allocate(std::size_t size, uint8_t alignment = 4) override
     {
-        auto node = memorypools_[{size, alignment}];
-      
+        auto next = ExpandToPowerOf2(size);
+        auto node = memorypools_[{next, alignment}];
+        
         // should check pool is full
-        auto ptr = node.pool_->Allocate(size, alignment);
+        auto ptr = node.pool_->Allocate(next, alignment);
         pooldictionary_[ptr] = node.pool_;
         
         used_memory_ += node.pool_->ObjectSize();
@@ -169,6 +217,7 @@ public:
         num_allocations_--;
     }
 };
+
 
 void LinearAllocatorTest()
 {
@@ -347,6 +396,47 @@ void PoolAllocatorTest()
     std::cout << "Pool Allocator Deallocated!\n";
 }
 
+void ProtoTypePoolAllocatorTest()
+{
+    std::vector<BaseTestClass*> alloced_instances;
+    alloced_instances.reserve(300);
+
+    CPMemoryPools t;
+    t.ReservePool();
+    for (int i = 0, e = 100; i < e; ++i)
+    {
+        auto testinst = Allocator::AllocateNew<TestClass>(t);
+        assert(testinst != nullptr);
+        alloced_instances.push_back(testinst);
+    }
+
+    for (int i = 0, e = 100; i < e; ++i)
+    {
+        auto testinst2 = Allocator::AllocateNew<TestClass2>(t);
+        assert(testinst2 != nullptr);
+        alloced_instances.push_back(testinst2);
+    }
+
+    for (int i = 0, e = 100; i < e; ++i)
+    {
+        auto testinst3 = Allocator::AllocateNew<TestClass3>(t);
+        assert(testinst3 != nullptr);
+        alloced_instances.push_back(testinst3);
+    }
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(alloced_instances.begin(), alloced_instances.end(), g);
+
+    for (auto ptr : alloced_instances)
+    {
+        assert(ptr != nullptr);
+        Allocator::DeallocateDelete(t, *ptr);
+    }
+
+
+    t.ClearPool();
+}
 
 int main()
 {
@@ -354,24 +444,8 @@ int main()
     //StackAllocatorTest();
     //FreeListAllocatorTest();
     //PoolAllocatorTest();
-
-    // WIP
-    //CPMemoryPools t;
-    //t.ReservePool();
-    //for (int i = 0, e = 100; i < e; ++i)
-    //{
-    //    auto testinst = Allocator::AllocateNew<TestClass>(t);
-    //}
-    //
-    //for (int i = 0, e = 100; i < e; ++i)
-    //{
-    //    auto testinst2 = Allocator::AllocateNew<TestClass2>(t);
-    //}
-    //
-    //for (int i = 0, e = 100; i < e; ++i)
-    //{
-    //    auto testinst3 = Allocator::AllocateNew<TestClass3>(t);
-    //}
+    ProtoTypePoolAllocatorTest();
+  
 
     std::cout << "Memory Allocator Test Done!\n"; 
 }
