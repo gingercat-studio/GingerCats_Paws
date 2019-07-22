@@ -60,7 +60,7 @@ namespace Allocator
         assert(length != 0);
         uint8_t headersize = sizeof(std::size_t) / sizeof(T);
 
-        if (sizeof(std::size_t) & sizeof(T) > 0)
+        if (sizeof(std::size_t) % sizeof(T) > 0)
         {
             ++headersize;
         }
@@ -68,11 +68,11 @@ namespace Allocator
         T* p = ((T*)allocator.Allocate(sizeof(T) * 
             (length + headersize), alignof(T))) + headersize;
 
-        *(((std::size_t*)p)--) = length;
+        *( ((std::size_t*)p) - 1 ) = length;
 
         for (std::size_t i = 0; i < length; i++)
         {
-            new (&p) T;
+            new (&p[i]) T;
         }
 
         return p;
@@ -81,11 +81,11 @@ namespace Allocator
     template <class T> void DeallocateArray(CPAllocator& allocator, T* array)
     {
         assert(array != nullptr);
-        std::size_t length = *(((std::size_t*)array)--);
+        std::size_t length = *(((std::size_t*)array)-1);
 
         for (std::size_t i = 0; i < length; i++)
         {
-            array.~T();
+            array[i].~T();
         }
 
         uint8_t headersize = sizeof(std::size_t) / sizeof(T);

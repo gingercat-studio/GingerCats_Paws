@@ -278,12 +278,14 @@ void ProtoTypePoolAllocatorTest()
         alloced_instances.push_back(testinst2);
     }
 
-    for (int i = 0, e = 100; i < e; ++i)
+    for (int i = 0, e = 80; i < e; ++i)
     {
         auto testinst3 = Allocator::AllocateNew<TestClass3>(t);
         assert(testinst3 != nullptr);
         alloced_instances.push_back(testinst3);
     }
+
+    auto arraycheck = Allocator::AllocateArray<TestClass3>(t, 10);
 
     std::random_device rd;
     std::mt19937 g(rd());
@@ -294,6 +296,9 @@ void ProtoTypePoolAllocatorTest()
         assert(ptr != nullptr);
         Allocator::DeallocateDelete(t, *ptr);
     }
+
+    Allocator::DeallocateArray(t, arraycheck);
+    arraycheck = nullptr;
 
 
     t.ClearPool();
