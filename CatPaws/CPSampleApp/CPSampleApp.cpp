@@ -304,6 +304,47 @@ void ProtoTypePoolAllocatorTest()
     t.ClearPool();
 }
 
+template<typename K, typename V>
+class CPHashNode
+{
+private:
+    K key_;
+    V value_;
+public:
+    CPHashNode() = default;
+    CPHashNode(K key, V value) : key_{ key }, value{ value } {}
+};
+
+template<typename K, typename V>
+class CPHashMap
+{
+private:
+    CPHashNode<K, V>** htable_;
+    CPHashNode<K, V>** dtable_;
+    CPTestMallocContainer temp_malloc_container_;
+    
+    CPFreeListAllocator* alloc_;
+    const std::size_t pre_allocated_mem_size = sizeof(CPHashMap<K, V>) * 2000;
+
+    // upperbound = capacity + 1
+    std::size_t capacity_;
+    std::size_t size_;
+public:
+    CPHashMap()
+        : temp_malloc_container_(pre_allocated_mem_size)
+    {
+        alloc_ = new (temp_malloc_container_.AllocatedMemory())
+            CPFreeListAllocator
+            (pre_allocated_mem_size - sizeof(CPFreeListAllocator),
+                PtrMath::Move
+                (temp_malloc_container_.AllocatedMemory(), sizeof(CPFreeListAllocator)));
+        
+        *htable_ = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, 10);
+        *dtable_ = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, 10);
+    }
+};
+
+
 int main()
 {
     //LinearAllocatorTest();
@@ -311,7 +352,8 @@ int main()
     //FreeListAllocatorTest();
     //PoolAllocatorTest();
     ProtoTypePoolAllocatorTest();
-  
+    CPHashMap<int, int> Test;
+    Test;
 
     std::cout << "Memory Allocator Test Done!\n"; 
 }
