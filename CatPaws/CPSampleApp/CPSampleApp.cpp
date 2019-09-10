@@ -6,8 +6,10 @@
 #include <vector> 
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 #include "CPCore.h"
+#include "CPHashTable.h"
 
 
 class BaseTestClass
@@ -304,246 +306,6 @@ void ProtoTypePoolAllocatorTest()
     t.ClearPool();
 }
 
-template<typename K, typename V>
-class CPHashNode
-{
-private:
-    K key_;
-    V value_;
-public:
-    CPHashNode() : key_{ 0 }, value_{ 0 } {}
-    CPHashNode(K key, V value) : key_{ key }, value_{ value } {}
-    K& Key() { return key_; }
-    V& Value() { return value_; }
-};
-
-template<class Key>
-struct CPHash
-{
-public:
-    CPHash() = default;
-    std::size_t operator()(const Key& key) const
-    {
-        return 0;
-    }
-};
-
-/*  Written in 2015 by Sebastiano Vigna (vigna@acm.org)
-
-To the extent possible under law, the author has dedicated all copyright
-and related and neighboring rights to this software to the public domain
-worldwide. This software is distributed without any warranty.
-
-See <http://creativecommons.org/publicdomain/zero/1.0/>. */
-template<> 
-struct CPHash<uint64_t>
-{
-public:
-    CPHash() = default;
-    virtual std::size_t operator()(const uint64_t& key) const
-    {
-        auto x = key;
-        uint64_t z = (x += 0x9e3779b97f4a7c15);
-        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-        z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-        return z ^ (z >> 31);
-    }
-};
-
-struct CPPtrTableHash : public CPHash<uint64_t>
-{
-private:
-    std::size_t table_size_ = 0;
-public:
-    CPPtrTableHash() = delete;
-    CPPtrTableHash(std::size_t inTableSize) : table_size_(inTableSize) {} ;
-    virtual std::size_t operator()(const uint64_t& key) const
-    {
-        return key % table_size_;
-    }
-    
-    const auto TableSize() const { return table_size_; }
-    void SetTableSize(const std::size_t& new_size) { table_size_ = new_size; }
-};
-
-struct CPPtrTableHash2 : public CPPtrTableHash
-{
-public:
-    CPPtrTableHash2(std::size_t inTableSize) : CPPtrTableHash(inTableSize) {};
-    virtual std::size_t operator()(const uint64_t& key) const
-    {
-        return (key / TableSize()) % TableSize();
-    }
-};
-
-template<typename K, typename V>
-class CPUnorderedMap
-{
-private:
-    // upperbound = capacity + 1
-    std::size_t capacity_ = 64;
-    std::size_t size_ = 0;
-
-    CPHashNode<K, V>* htable_ = nullptr;
-    CPHashNode<K, V>* dtable_ = nullptr;
-    CPFreeListAllocator* alloc_ = nullptr;
-
-    const std::size_t pre_allocated_mem_size = 1 << 26 ;
-
-    CPTestMallocContainer temp_malloc_container_;
-
-    CPPtrTableHash hash_func_;
-    CPPtrTableHash2 hash_func2_;
-
-public:
-    CPUnorderedMap(std::size_t capacity = 1 << 20)
-        : temp_malloc_container_(pre_allocated_mem_size)
-        , capacity_(capacity)
-        , hash_func_(capacity_)
-        , hash_func2_(capacity_)
-    {
-        std::size_t pre_allocated_memory_size
-            = temp_malloc_container_.AllocatedMemorySize();
-            
-        alloc_ = new (temp_malloc_container_.AllocatedMemory())
-            CPFreeListAllocator
-            (pre_allocated_memory_size - sizeof(CPFreeListAllocator),
-                PtrMath::Move
-                (temp_malloc_container_.AllocatedMemory(), 
-                    sizeof(CPFreeListAllocator)));
-        
-        htable_ = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, capacity_);
-        dtable_ = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, capacity_);
-    }
-
-    void Clear() noexcept
-    {
-        size_ = 0;
-        std::memset(htable_, 0, sizeof(CPHashNode<K, V>) * capacity_);
-        std::memset(dtable_, 0, sizeof(CPHashNode<K, V>) * capacity_);
-    }
-
-    bool HashInsert(K& key, V& value)
-    {
-        return HashInsert(key, value, htable_, dtable_);
-    }
-
-    bool HashInsert(K& key, V& value, 
-        CPHashNode<K,V>* htable, CPHashNode<K,V>* dtable)
-    {
-        auto hash1 = hash_func_(key);
-        auto hash2 = hash_func2_(key);
-
-        if (htable[hash1].Key() == 0) // hash key should not be zero
-        {
-            htable[hash1] = CPHashNode<K, V>(key, value);
-            return true;
-        }
-        
-        if (dtable[hash2].Key() == 0)
-        {
-            // do cuckoo behavior
-            dtable[hash2] 
-                = CPHashNode<K,V>(htable[hash1].Key(), htable[hash1].Value());
-            
-            htable[hash1] = CPHashNode<K, V>(key, value);
-            return true;
-        }
-
-        // collision!
-        return false;
-    }
-
-
-    void ReHash()
-    {
-        auto oldcapacity = capacity_;
-        CPHashNode<K, V>* oldhtable = htable_;
-        CPHashNode<K, V>* olddtable = dtable_;
-
-        bool collided = true;
-        while (collided)
-        {
-            collided = false;
-            capacity_ = capacity_ << 1;
-
-            hash_func_.SetTableSize(capacity_);
-            hash_func2_.SetTableSize(capacity_);
-
-            CPHashNode<K, V>* htable
-                = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, capacity_);
-
-            CPHashNode<K, V>* dtable
-                = Allocator::AllocateArray<CPHashNode<K, V>>(*alloc_, capacity_);
-
-            for (std::size_t i = 0; i < oldcapacity; ++i)
-            {
-                if (collided) break;
-                if (oldhtable[i].Key() != 0)
-                {
-                    collided = HashInsert(oldhtable[i].Key()
-                        , oldhtable[i].Value()
-                        , htable
-                        , dtable) == false;
-                }
-            }
-
-            for (std::size_t i = 0; i < oldcapacity; ++i)
-            {
-                if (collided) break;
-                if (olddtable[i].Key() != 0)
-                {
-                    collided = HashInsert(olddtable[i].Key()
-                        , olddtable[i].Value()
-                        , htable
-                        , dtable) == false;
-                }
-            }
-
-            if (collided)
-            {
-                Allocator::DeallocateArray(*alloc_, htable);
-                Allocator::DeallocateArray(*alloc_, dtable);
-            }
-            else
-            {
-                htable_ = htable;
-                dtable_ = dtable;
-            }
-        }
-
-        Allocator::DeallocateArray(*alloc_, oldhtable);
-        Allocator::DeallocateArray(*alloc_, olddtable);
-    }
-
-    void Insert(K key, V value)
-    {
-        if (HashInsert(key, value) == false)
-        {
-            ReHash();            
-            HashInsert(key, value);
-        }
-    }
-
-    CPHashNode<K,V>* Find(K key)
-    {
-        auto hash1 = hash_func_(key);
-        if (htable_[hash1].Key() == key)
-        {
-            return htable_[hash1];
-        }
-            
-        auto hash2 = hash_func2_(key);
-        if (dtable_[hash2].Key() == key)
-        {
-            return dtable_[hash2];
-        }
-
-        return nullptr;
-    }
-};
-
-
 int main()
 {
     //LinearAllocatorTest();
@@ -551,13 +313,94 @@ int main()
     //FreeListAllocatorTest();
     //PoolAllocatorTest();
     //ProtoTypePoolAllocatorTest();
-    CPUnorderedMap<uintptr_t, uintptr_t> Test;
-    for (std::size_t i = 0; i < 65535; ++i)
+    std::size_t testSize = 1 << 17;
+    std::vector<uintptr_t> table;
+    table.reserve(testSize-1);
+    for (std::size_t i = 0; i < testSize; ++i)
     {
-        Test.Insert(i, i*100);
+        table.push_back(i);
     }
 
-    Test.Clear();
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(table.begin(), table.end(), g);
+
+    auto start = std::chrono::steady_clock::now();
+    CPHashTable<uintptr_t, uintptr_t> Test;
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        Test.Insert(table[i], table[i]);
+    }
+    auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
+    std::cout << "CPHash Insert: "
+        << std::chrono::duration <double, std::milli>(diff).count() 
+        << " ms" << std::endl;
+
+    //Test.Clear();
+
+    start = std::chrono::steady_clock::now();
+    std::unordered_map<uintptr_t, uintptr_t> Test2(65535);
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        Test2[table[i]] = table[i];
+    }
+    end = std::chrono::steady_clock::now();
+    diff = end - start;
+    std::cout << "STL Insert: "
+        << std::chrono::duration <double, std::milli>(diff).count()
+        << " ms" << std::endl;
+
+    std::random_device rd2;
+    std::mt19937 g2(rd());
+    std::shuffle(table.begin(), table.end(), g2);
+
+    start = std::chrono::steady_clock::now();
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        if (Test.Find(table[i]) == nullptr)
+        {
+            assert(false);
+        }
+    }
+    end = std::chrono::steady_clock::now();
+    diff = end - start;
+    std::cout << "CPHash Lookup: "
+        << std::chrono::duration <double, std::milli>(diff).count()
+        << " ms" << std::endl;
+
+    start = std::chrono::steady_clock::now();
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        auto itr = Test2.at(table[i]);
+    }
+    end = std::chrono::steady_clock::now();
+    diff = end - start;
+    std::cout << "STL Lookup: "
+        << std::chrono::duration <double, std::milli>(diff).count()
+        << " ms" << std::endl;
+
+    start = std::chrono::steady_clock::now();
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        Test.Remove(table[i]);
+    }
+    end = std::chrono::steady_clock::now();
+    diff = end - start;
+    std::cout << "CPHash Remove: "
+        << std::chrono::duration <double, std::milli>(diff).count()
+        << " ms" << std::endl;
+
+    start = std::chrono::steady_clock::now();
+    for (std::size_t i = 0; i < testSize; ++i)
+    {
+        Test2.erase(table[i]);
+    }
+    end = std::chrono::steady_clock::now();
+    diff = end - start;
+    std::cout << "STL Remove: "
+        << std::chrono::duration <double, std::milli>(diff).count()
+        << " ms" << std::endl;
 
     std::cout << "Memory Allocator Test Done!\n"; 
 }

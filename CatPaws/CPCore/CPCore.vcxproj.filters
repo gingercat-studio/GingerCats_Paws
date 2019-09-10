@@ -56,6 +56,9 @@
     <ClInclude Include="Include\CPReservedMemoryPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Include\CPHashTable.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Src\CPStackAllocator.cpp">
@@ -74,6 +77,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Src\CPReservedMemoryPool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\CPHashTable.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

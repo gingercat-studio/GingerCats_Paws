@@ -65,16 +65,27 @@ namespace Allocator
             ++headersize;
         }
 
-        T* p = ((T*)allocator.Allocate(sizeof(T) * 
-            (length + headersize), alignof(T))) + headersize;
-
-        *( ((std::size_t*)p) - 1 ) = length;
-
-        for (std::size_t i = 0; i < length; i++)
+        std::size_t alloc_size = sizeof(T) * (length + headersize);
+        
+        T* p = nullptr;
+        if (alloc_size < (1 << 15))
         {
-            new (&p[i]) T;
+            p = ((T*)allocator.Allocate((alloc_size) + headersize, alignof(T)));
+        }
+        else
+        {
+            p = ((T*)std::malloc(alloc_size) + headersize);
         }
 
+        if (p != nullptr)
+        {
+            *(((std::size_t*)p) - 1) = length;
+
+            for (std::size_t i = 0; i < length; i++)
+            {
+                new (&p[i]) T;
+            }
+        }
         return p;
     }
 
@@ -95,7 +106,16 @@ namespace Allocator
             headersize++;
         }
 
-        allocator.Deallocate(array - headersize);
+        std::size_t alloc_size = sizeof(T) * (length + headersize);
+
+        if (alloc_size < (1 << 15))
+        {
+            allocator.Deallocate(array - headersize);
+        }
+        else
+        {
+            delete (array - headersize);
+        }
     }
 }
 

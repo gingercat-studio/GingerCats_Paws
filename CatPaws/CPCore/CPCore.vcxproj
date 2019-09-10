@@ -139,6 +139,7 @@
     <ClInclude Include="Include\CPAddressUtil.h" />
     <ClInclude Include="Include\CPCore.h" />
     <ClInclude Include="Include\CPFreeListAllocator.h" />
+    <ClInclude Include="Include\CPHashTable.h" />
     <ClInclude Include="Include\CPInclude.h" />
     <ClInclude Include="Include\CPLinearAllocator.h" />
     <ClInclude Include="Include\CPAllocator.h" />
@@ -151,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Src\CPFreeListAllocator.cpp" />
+    <ClCompile Include="Src\CPHashTable.cpp" />
     <ClCompile Include="Src\CPLinearAllocator.cpp" />
     <ClCompile Include="Src\CPPoolAllocator.cpp" />
     <ClCompile Include="Src\CPProxyAllocator.cpp" />
